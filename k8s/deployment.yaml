@@ -1,0 +1,98 @@
+# Deployment do Postgre
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres-container
+        image: postgres:14.3-alpine
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 5432
+        env:
+          - name: POSTGRES_PASSWORD
+            value: "kubenews123"
+          - name: POSTGRES_USER
+            value: "kubenews"
+          - name: POSTGRES_DB
+            value: "kubenews"
+
+---
+
+# service deploy postgres banco de dados
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432 # porta que vai ser direcionada para o pod
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubewens
+spec:
+  selector:
+    matchLabels:
+      app: kubewens
+  template:
+    metadata:
+      labels:
+        app: kubewens
+    spec:
+      containers:
+      - name: container-kubewens
+        image: ellsena/kube-news:v1
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        env: # localizados em src\models\post.js | valores em deploy\postgres\env
+          - name: DB_DATABASE
+            value: "kubenews"
+          - name: DB_USERNAME
+            value: "kubenews"
+          - name: DB_PASSWORD
+            value: "kubenews123"
+          - name: DB_HOST # deployment postgres \ metadata \ name:
+            value: "postgres"
+
+
+---
+
+# service deploy kubenews
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubenews
+spec:
+  selector:
+    app: kubewens
+  ports:
+  - port: 80
+    targetPort: 8080 # porta que a aplicação é exposta
+    nodePort: 30000 # porta kk3d cluster create cluster --servers 1 --agents 2 -p "30000:30000@loadbalancer" 3d 
+  type: NodePort
